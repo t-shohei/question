@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "name": "山田太郎",
+    "value": "名前",
+    "type": "textarea"
+  },
+  {
+    "id": 2,
+    "value": "参加日は？",
+    "name": "佐藤花子",
+    "type": "checkbox",
+    "questions": [
+      {
+        "id": 1,
+        "value": "項目1",
+        "checked": true
+      },
+      {
+        "id": 2,
+        "value": "項目2"
+      },
+      {
+        "id": 3,
+        "value": "項目3"
+      }
+    ]
+  }
+]
