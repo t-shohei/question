@@ -2,11 +2,24 @@ import * as http from "http";
 import * as fs from "fs";
 import * as path from "path";
 
-const server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
+// uploadファイルの存在確認
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
+// serverの処理
+const server = http.createServer(
+  (req: http.IncomingMessage, res: http.ServerResponse) => {
+    // GETメソッドの時は、デフォのindex.htmlを返す
     if (req.method === "GET") {
       res.statusCode = 200;
       res.setHeader("Content-Type", "text/html");
-      const filePath: string = path.join(__dirname, "/public", req.url === "/" ? "index.html": req.url!);
+      // publicファイルの指定と、URLがデフォ値かどうかチェック
+      const filePath: string = path.join(
+        __dirname,
+        "/public",
+        req.url === "/" ? "index.html" : req.url!
+      );
+      // index,htmlを読み込んでアクセス側に返す
       fs.readFile(filePath, "utf-8", (err, data) => {
         if (err) {
           res.statusCode = 500;
@@ -16,18 +29,21 @@ const server = http.createServer((req: http.IncomingMessage, res: http.ServerRes
         res.end(data);
       });
     }
+    // POSTメソッドでuploadにファイル受付
     else if (req.method === "POST" && req.url === "/upload") {
       let body: string = "";
-      if (req.headers['content-type'] !== 'application/json') {
+      // 送られてきたもののヘッダー確認（jsonが送られてきてる想定）
+      if (req.headers["content-type"] !== "application/json") {
         console.log(req.headers["content-type"]);
         res.statusCode = 400;
         res.end("Content-Typeはapplication/jsonである必要があります");
         return;
       }
+      // jsonの時はJSONでbody作成
       req.on("data", (chunk: string) => {
         body += chunk;
       });
-
+      // 最終的にくらいあんとにJSONを返す
       req.on("end", () => {
         console.log(body);
         try {
@@ -54,36 +70,7 @@ const server = http.createServer((req: http.IncomingMessage, res: http.ServerRes
   }
 );
 
+// 8000番ポートでアクセス受付
 server.listen(8000, () => {
   console.log("Server running at http://localhost:8000");
 });
-MockKでcoEveryを使ってシールドインターフェース（sealed interface）をモックしようとした場合、initializationErrorが出ることがあります。Kotlinのシールドインターフェースはコンパイル時に決まったサブクラスを持つように設計されていますが、MockKで直接モックしようとするとエラーが発生する場合があります。これは、MockKがsealedインターフェースやクラスをうまく処理できないためです。
-
-以下の解決策を試してみてください。
-
-解決策1: sealed interfaceの具体的なインスタンスを返す
-Result() ではなく、Resultの具体的なサブクラスのインスタンス（SuccessまたはFailure）を返すようにします。
-
-kotlin
-コードをコピーする
-@Test
-fun testFunction() {
-    coEvery { 関数() } returns Success() // Success()やFailure()などの具体的なインスタンス
-}
-解決策2: mockk関数で直接モックインスタンスを返す
-SuccessやFailureのような具体的なサブクラスが存在する場合、それらをmockkで作成し、coEveryで返すことも可能です。
-
-kotlin
-コードをコピーする
-val mockSuccess = mockk<Success>()
-coEvery { 関数() } returns mockSuccess
-解決策3: 型の柔軟性を確認
-場合によっては、関数の戻り型を変更できるなら、sealed interfaceの代わりに柔軟な型に変更してモックを適用することも可能です。
-
-MockKのシールドインターフェース対応には限界があるため、上記の方法で特定の実装を返すことでエラーが解決することが多いです。
-
-
-
-
-
-
