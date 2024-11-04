@@ -5,25 +5,14 @@
   <title>アンケートアップロード</title>
 </head>
 <body>
-  <h1>アンケートをアップロード</h1>
+  <h1>jsonをアッロード</h1>
   <form id="uploadForm" enctype="multipart/form-data">
     <input type="file" name="jsonFile" accept=".json" required />
-    <button type="button" onclick="uploadFile()">アンケート送信</button>
+    <button type="button" id="uploadButton">アンケート送信</button>
   </form>
 
   <p id="response"></p>
 
-  <script>
-    async function uploadFile() {
-      const formData = new FormData(document.getElementById("uploadForm"));
-      const response = await fetch('/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const result = await response.json();
-      document.getElementById("response").textContent = result.url ? 
-        `アンケートが作成されました: ${result.url}` : "エラーが発生しました。";
-    }
-  </script>
+  <script src = "./js/index.js"></script>
 </body>
 </html>
