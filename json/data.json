@@ -1,0 +1,29 @@
+[
+  {
+    "question_id": 1,
+    "question": "名前は？",
+    "type": "textarea",
+    "required": true
+  },
+  {
+    "question_id": 2,
+    "question": "参加日は？",
+    "required": false,
+    "type": "checkbox",
+    "questions": [
+      {
+        "questions_id": 1,
+        "value": "項目1",
+        "checked": true
+      },
+      {
+        "questions_id": 2,
+        "value": "項目2"
+      },
+      {
+        "questions_id": 3,
+        "value": "項目3"
+      }
+    ]
+  }
+]
