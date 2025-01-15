@@ -1,12 +1,19 @@
-
 import * as http from "http";
 import * as fs from "fs";
 import * as path from "path";
-import { fileNum } from "./postRequest";
+const indexPath = path.join(__dirname, "../../public/index.html");
+const createPath = path.join(
+  __dirname,
+  "../../makeQuestion/createQuestion.html"
+);
+
 // GET処理
-export const getRequest = (req: http.IncomingMessage, res: any, db: any) => {
+export const getRequest = async (
+  req: http.IncomingMessage,
+  res: any,
+  db: any
+) => {
   // Topページの表示
-  const indexPath = path.join(__dirname, "../../public/index.html");
   if (req.url === "/") {
     fs.readFile(indexPath, (err, data) => {
       if (err) {
@@ -21,7 +28,7 @@ export const getRequest = (req: http.IncomingMessage, res: any, db: any) => {
   }
   // アンけートページの表示
   else if (req.url?.startsWith("/uploads/questions/")) {
-    const filePath = path.join(__dirname,"../../", req.url);
+    const filePath = path.join(__dirname, "../../", req.url);
 
     fs.access(filePath, fs.constants.F_OK, (err) => {
       if (err) {
@@ -48,16 +55,33 @@ export const getRequest = (req: http.IncomingMessage, res: any, db: any) => {
   }
   // 結果の取得
   else if (req.url === "/results") {
+    console.log("結果取得開始");
+
     const answersCollection = db.collection("answers");
-    answersCollection.find({}).toArray((err: Error | null, answers: any[]) => {
+    const result = await answersCollection.find().toArray();
+    console.log(result);
+
+    // if (err) {
+    //   res.statusCode = 500;
+    //   res.end("データ取得エラー");
+    //   return;
+    // }
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(result));
+  }
+
+  // アンケート作成ページに遷移する用
+  else if (req.url === "/create") {
+    fs.readFile(createPath, (err, data) => {
       if (err) {
         res.statusCode = 500;
-        res.end("データ取得エラー");
+        res.end("ファイルが見つかりません");
         return;
       }
       res.statusCode = 200;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(answers));
+      res.setHeader("Content-Type", "text/html");
+      res.end(data);
     });
   }
   // その他のGETリクエスト

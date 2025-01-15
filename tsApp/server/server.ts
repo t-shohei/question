@@ -2,14 +2,14 @@ import * as http from "http";
 import * as fs from "fs";
 import * as path from "path";
 import { MongoClient } from "mongodb";
+import { createDynamicHtml } from "../util/htmlGenerator";
+import { IncomingForm } from "formidable";
+const express = require('express')
+const app = express()
+const port = 8000
 
-// import { dbConnect } from "../util/dbConnect";
-import { getRequest } from "./request/getRequest";
-import { postRequest } from "./request/postRequest";
-
-const uri = "mongodb://localhost:27017/question";
+const uri = "mongodb://localhost:27017/questions";
 const dbName = "questions";
-const collectionName = "question";
 let db: any;
 
 MongoClient.connect(uri)
@@ -19,27 +19,194 @@ MongoClient.connect(uri)
   })
   .catch((error) => console.error("MongoDB接続エラー:", error));
 
+const indexPath = path.join(__dirname, "../public/index.html");
+const createPath = path.join(__dirname, "../makeQuestion/createQuestion.html");
+const questionsDir = path.join(__dirname, "../uploads/questions");
+export let fileNum = 1;
+if (!fs.existsSync(questionsDir)) fs.mkdirSync(questionsDir);
+app.get('/',(req: http.IncomingMessage, res: any) => {
+    fs.readFile(indexPath, (err, data) => {
+      if (err) {
+        res.statusCode = 500;
+        res.end("ファイルが見つかりません");
+        return;
+      }
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "text/html");
+      res.end(data);
+    });
+})
+app.get('/create', (req:any, res: any) => {
+      fs.readFile(createPath, (err, data) => {
+        if (err) {
+          res.statusCode = 500;
+          res.end("ファイルが見つかりません");
+          return;
+        }
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "text/html");
+        res.end(data);
+      });
+})
+app.get('/uploads/questions/*', (req: any, res: any) =>{
+  const filePath = path.join(__dirname, "../", req.url);
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+      if (err) {
+        // ファイルが見つからない場合
+        res.statusCode = 404;
+        res.setHeader("Content-Type", "text/plain");
+        res.end("指定されたファイルが見つかりません。");
+        return;
+      }
+      // ファイルを読み込みレスポンスとして返す
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "text/plain");
+          res.end("ファイルの読み込み中にエラーが発生しました。");
+          return;
+        }
+
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "text/html");
+        res.end(data);
+      });
+    });
+});
+app.get('/results',async(req:any, res:any) => {
+  console.log("結果取得開始");
+
+  const answersCollection = db.collection("answers");
+  const result = await answersCollection.find().toArray();
+  console.log(result);
+  res.statusCode = 200;
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(result));
+})
+app.post('/upload',(req:any,res:any)=>{
+  const form = new IncomingForm();
+    form.parse(req, (err:any, fields:any, files:any) => {
+      if (err) {
+        res.statusCode = 500;
+        res.end("フォーム解析エラー");
+        return;
+      }
+
+      // ファイルを取得
+      const uploadedFile = Array.isArray(files.jsonFile)
+        ? files.jsonFile[0]
+        : files.jsonFile;
+      if (!uploadedFile) {
+        res.statusCode = 400;
+        res.end("JSONファイルが見つかりません");
+        return;
+      }
+
+      fs.readFile(uploadedFile.filepath, "utf-8", async (readErr, data) => {
+        if (readErr) {
+          res.statusCode = 500;
+          res.end("ファイル読み込みエラー");
+          return;
+        }
+
+        try {
+          const jsonData = JSON.parse(data);
+          const questionId = await registQuestion(db, "questions", jsonData);
+          console.log(questionId);
+          // HTMLファイルを保存し、連番を加算
+          const questionHtmlFile = `question${fileNum}.html`;
+          fileNum++;
+          db.collection("questions").find;
+          // アンケートHTMLのファイルのパスを作成
+          const htmlFilePath = path.join(questionsDir, questionHtmlFile);
+          fs.writeFile(
+            htmlFilePath,
+            createDynamicHtml(jsonData, questionId),
+            (err) => {
+              if (err) {
+                res.statusCode = 500;
+                res.end("ファイル作成エラー");
+                return;
+              }
+            }
+          );
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "application/json");
+          res.end(
+            JSON.stringify({
+              message: "データを受け取りました",
+              data: jsonData,
+              url: `http://localhost:8000/uploads/questions/${questionHtmlFile}`,
+            })
+          );
+        } catch (parseErr) {
+          res.statusCode = 400;
+          res.end("無効なJSONデータです");
+        }
+      });
+    });
+})
+app.post('/answer',(req: any,res: any) => {
+      // アンケート回答の送信処理
+      let body = "";
+      req.on("data", (chunk: any) => {
+        body += chunk;
+      });
+      req.on("end", async () => {
+        try {
+          console.log("inTry");
+          const answerData = JSON.parse(body);
+          console.log("server answerData = ", answerData);
+          const answersCollection = db.collection("answers");
+          // DB保存処理
+          const result = await answersCollection.insertOne(answerData);
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "application/json");
+          res.end(
+            JSON.stringify({
+              message: "回答が保存されました",
+              id: result.insertedId,
+            })
+          );
+          console.log("tryEnd:", result);
+        } catch (parseErr) {
+          if (parseErr) {
+            console.log(parseErr);
+            res.statusCode = 500;
+            res.end("データ保存エラー");
+            return;
+          }
+          res.statusCode = 400;
+          res.end("無効なデータ形式です");
+        }
+      });
+})
 
 
-// アップロードディレクトリの確認または作成
-const uploadsDir = path.join(__dirname, "../uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-// サーバー処理
-const server = http.createServer(
-  (req: http.IncomingMessage, res: http.ServerResponse) => {
-    // GETリクエスト
-    if (req.method === "GET") {
-      getRequest(req, res, db);
-    }
-    // POSTリクエスト処理
-    else if (req.method === "POST") {
-      postRequest(req, res, db);
-    }
-  }
-);
+
+const registQuestion = async (db: any, collectionName: any, json: any) => {
+  const result = await db.collection(collectionName).insertOne({ json });
+  return result.insertedId;
+};
 
 // サーバー起動
-server.listen(8000, () => {
+app.listen(port, () => {
   console.log("Server running at http://localhost:8000");
 });
+
+
+
+// // サーバー処理
+// const server = http.createServer(
+//   (req: http.IncomingMessage, res: http.ServerResponse) => {
+//     // GETリクエスト
+//     if (req.method === "GET") {
+//       getRequest(req, res, db);
+//     }
+//     // POSTリクエスト処理
+//     else if (req.method === "POST") {
+//       postRequest(req, res, db);
+//     }
+//   }
+// );

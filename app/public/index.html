@@ -1,55 +1,67 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>アンケートアップロード</title>
-</head>
-<body>
-  <h1>jsonをアッロード</h1>
-  <form id="uploadForm" enctype="multipart/form-data">
-    <input type="file" name="jsonFile" accept=".json" required />
-    <button type="button" id="uploadButton">アンケート送信</button>
-  </form>
+  <head>
+    <meta charset="UTF-8" />
+    <title>アンケートトップ</title>
+  </head>
+  <body>
+    <h1>メニュー選択</h1>
+    <button type="button" id="makeButton">アンケート作成</button>
+    <button type="button" id="resultButton">アンケート結果確認</button>
+    <button type="button" id="answerButton">アンケート回答</button>
+    <p id="response"></p>
 
-  <p id="response"></p>
+    <!-- 結果を表示するためのセクション -->
+    <div id="resultContainer" style="margin-top: 20px;"></div>
 
-  <script >const uploadFile = async () => {
-    const formData = new FormData(document.getElementById("uploadForm"));
-    try {
-      const response = await fetch("/upload", {
-        method: "POST",
-        body: formData,
-      });
-  
-      if (!response.ok) {
-        // エラー時はJSONではなくテキストでレスポンスを取得
-        const errorText = await response.text();
-        console.error("Error:", errorText);
-        document.getElementById("response").textContent =
-          "エラーが発生しました: " + errorText;
-        return;
+    <script>
+      // アンケート作成ページ遷移
+      const makeButton = document.getElementById("makeButton");
+      if (makeButton) {
+        makeButton.addEventListener("click", () => {
+          window.location.href = "/create";
+        });
+      } else {
+        console.error("アンケート作成ボタンが見つかりません。");
       }
-  
-      // 成功時のJSONレスポンス
-      const result = await response.json();
-      console.log(result);
-      
-      document.getElementById("response").textContent = result.url
-        ? `アンケートが作成されました: ${result.url}`
-        : "エラーが発生しました。";
-    } catch (err) {
-      console.error("Fetchエラー:", err);
-      document.getElementById("response").textContent =
-        "通信エラーが発生しました。";
-    }
-  };
-  
-  const uploadButton = document.getElementById("uploadButton");
-  if (uploadButton) {
-    uploadButton.addEventListener("click", uploadFile);
-  } else {
-    console.error("アップロードボタンが見つかりません。");
-  }
-  </script>
-</body>
+
+      // アンケート結果取得と表示
+      const resultButton = document.getElementById("resultButton");
+      if (resultButton) {
+        resultButton.addEventListener("click", async () => {
+          const resultContainer = document.getElementById("resultContainer");
+          resultContainer.innerHTML = "データを取得しています...";
+
+          try {
+            const response = await fetch("/results");
+            if (!response.ok) {
+              throw new Error("データの取得に失敗しました");
+            }
+
+            const results = await response.json();
+
+            // 結果を表示
+            resultContainer.innerHTML = "";
+            results.forEach((result) => {
+              const questionDiv = document.createElement("div");
+              questionDiv.style.border = "1px solid #ccc";
+              questionDiv.style.padding = "10px";
+              questionDiv.style.marginBottom = "10px";
+
+              questionDiv.innerHTML = `
+                <h2>質問ID: ${result.questionId}</h2>
+                <p>回答: ${result.answer}</p>
+              `;
+              resultContainer.appendChild(questionDiv);
+            });
+          } catch (error) {
+            console.error("エラー:", error);
+            resultContainer.innerHTML = "結果の取得中にエラーが発生しました。";
+          }
+        });
+      } else {
+        console.error("結果確認ボタンが見つかりません。");
+      }
+    </script>
+  </body>
 </html>

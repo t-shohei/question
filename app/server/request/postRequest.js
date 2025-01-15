@@ -63,7 +63,7 @@ const postRequest = (req, res, db) => {
                 res.end("JSONファイルが見つかりません");
                 return;
             }
-            fs.readFile(uploadedFile.filepath, "utf-8", (readErr, data) => {
+            fs.readFile(uploadedFile.filepath, "utf-8", (readErr, data) => __awaiter(void 0, void 0, void 0, function* () {
                 if (readErr) {
                     res.statusCode = 500;
                     res.end("ファイル読み込みエラー");
@@ -71,20 +71,21 @@ const postRequest = (req, res, db) => {
                 }
                 try {
                     const jsonData = JSON.parse(data);
+                    const questionId = yield registQuestion(db, "questions", jsonData);
+                    console.log(questionId);
                     // HTMLファイルを保存し、連番を加算
                     const questionHtmlFile = `question${exports.fileNum}.html`;
                     exports.fileNum++;
+                    db.collection("questions").find;
                     // アンケートHTMLのファイルのパスを作成
                     const htmlFilePath = path.join(questionsDir, questionHtmlFile);
-                    fs.writeFile(htmlFilePath, (0, htmlGenerator_1.createDynamicHtml)(jsonData), (err) => {
+                    fs.writeFile(htmlFilePath, (0, htmlGenerator_1.createDynamicHtml)(jsonData, questionId), (err) => {
                         if (err) {
                             res.statusCode = 500;
                             res.end("ファイル作成エラー");
                             return;
                         }
                     });
-                    console.log("アップロードされたデータ:", jsonData);
-                    const result = registQuestion(db, "questions", jsonData);
                     res.statusCode = 200;
                     res.setHeader("Content-Type", "application/json");
                     res.end(JSON.stringify({
@@ -97,38 +98,42 @@ const postRequest = (req, res, db) => {
                     res.statusCode = 400;
                     res.end("無効なJSONデータです");
                 }
-            });
+            }));
         });
     }
-    else if (req.url === "/submit") {
+    else if (req.url === "/answer") {
         // アンケート回答の送信処理
         let body = "";
         req.on("data", (chunk) => {
             body += chunk;
         });
-        req.on("end", () => {
+        req.on("end", () => __awaiter(void 0, void 0, void 0, function* () {
             try {
+                console.log("inTry");
                 const answerData = JSON.parse(body);
+                console.log("server answerData = ", answerData);
                 const answersCollection = db.collection("answers");
-                answersCollection.insertOne(answerData, (err, result) => {
-                    if (err) {
-                        res.statusCode = 500;
-                        res.end("データ保存エラー");
-                        return;
-                    }
-                    res.statusCode = 200;
-                    res.setHeader("Content-Type", "application/json");
-                    res.end(JSON.stringify({
-                        message: "回答が保存されました",
-                        id: result.insertedId,
-                    }));
-                });
+                // DB保存処理
+                const result = yield answersCollection.insertOne(answerData);
+                res.statusCode = 200;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({
+                    message: "回答が保存されました",
+                    id: result.insertedId,
+                }));
+                console.log("tryEnd:", result);
             }
             catch (parseErr) {
+                if (parseErr) {
+                    console.log(parseErr);
+                    res.statusCode = 500;
+                    res.end("データ保存エラー");
+                    return;
+                }
                 res.statusCode = 400;
                 res.end("無効なデータ形式です");
             }
-        });
+        }));
     }
     else {
         res.statusCode = 405;
@@ -139,5 +144,5 @@ const postRequest = (req, res, db) => {
 exports.postRequest = postRequest;
 const registQuestion = (db, collectionName, json) => __awaiter(void 0, void 0, void 0, function* () {
     const result = yield db.collection(collectionName).insertOne({ json });
-    return result;
+    return result.insertedId;
 });

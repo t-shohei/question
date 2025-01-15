@@ -30,7 +30,7 @@ export const postRequest = (req: any, res: any, db: any) => {
         return;
       }
 
-      fs.readFile(uploadedFile.filepath, "utf-8", (readErr, data) => {
+      fs.readFile(uploadedFile.filepath, "utf-8", async (readErr, data) => {
         if (readErr) {
           res.statusCode = 500;
           res.end("ファイル読み込みエラー");
@@ -39,20 +39,25 @@ export const postRequest = (req: any, res: any, db: any) => {
 
         try {
           const jsonData = JSON.parse(data);
+          const questionId = await registQuestion(db, "questions", jsonData);
+          console.log(questionId);
           // HTMLファイルを保存し、連番を加算
           const questionHtmlFile = `question${fileNum}.html`;
           fileNum++;
+          db.collection("questions").find;
           // アンケートHTMLのファイルのパスを作成
           const htmlFilePath = path.join(questionsDir, questionHtmlFile);
-          fs.writeFile(htmlFilePath, createDynamicHtml(jsonData), (err) => {
-            if (err) {
-              res.statusCode = 500;
-              res.end("ファイル作成エラー");
-              return;
+          fs.writeFile(
+            htmlFilePath,
+            createDynamicHtml(jsonData, questionId),
+            (err) => {
+              if (err) {
+                res.statusCode = 500;
+                res.end("ファイル作成エラー");
+                return;
+              }
             }
-          });
-          console.log("アップロードされたデータ:", jsonData);
-          const result = registQuestion(db,"questions",jsonData)
+          );
           res.statusCode = 200;
           res.setHeader("Content-Type", "application/json");
           res.end(
@@ -68,35 +73,36 @@ export const postRequest = (req: any, res: any, db: any) => {
         }
       });
     });
-  } else if (req.url === "/submit") {
+  } else if (req.url === "/answer") {
     // アンケート回答の送信処理
     let body = "";
     req.on("data", (chunk: any) => {
       body += chunk;
     });
-    req.on("end", () => {
+    req.on("end", async () => {
       try {
+        console.log("inTry");
         const answerData = JSON.parse(body);
+        console.log("server answerData = ", answerData);
         const answersCollection = db.collection("answers");
-        answersCollection.insertOne(
-          answerData,
-          (err: Error | null, result: any) => {
-            if (err) {
-              res.statusCode = 500;
-              res.end("データ保存エラー");
-              return;
-            }
-            res.statusCode = 200;
-            res.setHeader("Content-Type", "application/json");
-            res.end(
-              JSON.stringify({
-                message: "回答が保存されました",
-                id: result.insertedId,
-              })
-            );
-          }
+        // DB保存処理
+        const result = await answersCollection.insertOne(answerData);
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(
+          JSON.stringify({
+            message: "回答が保存されました",
+            id: result.insertedId,
+          })
         );
+        console.log("tryEnd:", result);
       } catch (parseErr) {
+        if (parseErr) {
+          console.log(parseErr);
+          res.statusCode = 500;
+          res.end("データ保存エラー");
+          return;
+        }
         res.statusCode = 400;
         res.end("無効なデータ形式です");
       }
@@ -107,7 +113,7 @@ export const postRequest = (req: any, res: any, db: any) => {
     res.end("Method Not Allowed");
   }
 };
-const registQuestion = async (db: any, collectionName: any, json: any) =>{
-  const result = await db.collection(collectionName).insertOne({json});
-  return result
-}
+const registQuestion = async (db: any, collectionName: any, json: any) => {
+  const result = await db.collection(collectionName).insertOne({ json });
+  return result.insertedId;
+};

@@ -6,19 +6,82 @@
       <title>アンケート</title>
     </head>
     <body>
+      <div class="questions" id="6787a81ad44f67816133b2a3">
   
-    <div class="question">
-    <h2>質問: 名前は？</h2>
+      <div class="question" id="1">
+    <h2>質問: 1</h2>
 <textarea id="textarea_1"></textarea>
 </div>
-    <div class="question">
-    <h2>質問: 参加日は？</h2>
+      <div class="question" id="2">
+    <h2>質問: 2</h2>
 <input name="undefined" id="checkbox_1" type="checkbox" value="項目1">項目1
 <input name="undefined" id="checkbox_2" type="checkbox" value="項目2">項目2
 <input name="undefined" id="checkbox_3" type="checkbox" value="項目3">項目3
 </div>
         <button id="submitButton">回答</button>
-        <script src="../js/script.js"></script>
+        </div><script>
+      const questionId = document.getElementsByClassName("questions")[0].id;
+      const questionClass = document.getElementsByClassName("question");
+      const submitButton = document.getElementById("submitButton");
+      const resultText = document.getElementById("result");
+      let textarea;
+      let textareaValue;
+  
+// JSONデータを構築
+      const data = {questionId: questionId,};
+      submitButton.addEventListener("click", async () => {
+        for (
+          let index = 0, answerId = 1;
+          index < questionClass.length;
+          index++, answerId++
+        ) {
+          // テキストエリアの値をデータに追加する
+          if (questionClass[index].querySelector("textarea") !== null) {
+textarea = document.getElementById(`textarea_${index + 1}`);
+textareaValue = textarea.value;
+data[`textarea_${answerId}`] = textareaValue;
+}// checkboxの時にデータを追加する
+else if (questionClass[index].querySelector('input[type="checkbox"]') !==null) {
+  checkboxes = questionClass[index].querySelectorAll(
+    'input[type="checkbox"]'
+  );
+  selectedCheckboxes = Array.from(checkboxes)
+    .filter((checkbox) => checkbox.checked) // チェックされているものだけに絞る
+    .map((checkbox) => checkbox.value); // 値を取得
+  data[`checkbox_${answerId}`] = selectedCheckboxes;
+}
+  //radioButtonの時のデータを追加
+  // ラジオボタンの値をデータに追加する
+  else if (questionClass[index].querySelector('input[type="radio"]') !== null) {
+  const radios = questionClass[index].querySelectorAll('input[type="radio"]');
+    const selectedRadio = Array.from(radios).find((radio) => radio.checked); // チェックされているラジオボタンを取得
+    data[`radio_${answerId}`] = selectedRadio ? selectedRadio.value : null; // チェックされていない場合は null
+  }
+}
+console.log(data);
+// JSONとして送信
+try {
+          console.log("client inTry");
+          await fetch("/answer", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json", // JSONを送信する場合のヘッダー
+            },
+            body: JSON.stringify(data), // JSON形式に変換して送信
+          })
+            .then((response) => response.json())
+            .then((res) => {
+              console.log(res.message);
+              resultText.textContent = res.message;
+            })
+            .catch((err) => console.log(err));
+          console.log("client endTry");
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    );
+      </script>
       </body>
     </html>
   

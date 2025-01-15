@@ -22,15 +22,25 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRequest = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const indexPath = path.join(__dirname, "../../public/index.html");
+const createPath = path.join(__dirname, "../../makeQuestion/createQuestion.html");
 // GET処理
-const getRequest = (req, res, db) => {
+const getRequest = (req, res, db) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     // Topページの表示
-    const indexPath = path.join(__dirname, "../../public/index.html");
     if (req.url === "/") {
         fs.readFile(indexPath, (err, data) => {
             if (err) {
@@ -70,16 +80,30 @@ const getRequest = (req, res, db) => {
     }
     // 結果の取得
     else if (req.url === "/results") {
+        console.log("結果取得開始");
         const answersCollection = db.collection("answers");
-        answersCollection.find({}).toArray((err, answers) => {
+        const result = yield answersCollection.find().toArray();
+        console.log(result);
+        // if (err) {
+        //   res.statusCode = 500;
+        //   res.end("データ取得エラー");
+        //   return;
+        // }
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(result));
+    }
+    // アンケート作成ページに遷移する用
+    else if (req.url === "/create") {
+        fs.readFile(createPath, (err, data) => {
             if (err) {
                 res.statusCode = 500;
-                res.end("データ取得エラー");
+                res.end("ファイルが見つかりません");
                 return;
             }
             res.statusCode = 200;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify(answers));
+            res.setHeader("Content-Type", "text/html");
+            res.end(data);
         });
     }
     // その他のGETリクエスト
@@ -87,5 +111,5 @@ const getRequest = (req, res, db) => {
         res.statusCode = 404;
         res.end("Not Found");
     }
-};
+});
 exports.getRequest = getRequest;
