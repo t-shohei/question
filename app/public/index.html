@@ -12,7 +12,11 @@
     <p id="response"></p>
 
     <!-- 結果を表示するためのセクション -->
-    <div id="resultContainer" style="margin-top: 20px;"></div>
+    <div id="resultsContainer" style="margin-top: 20px">
+      <div id="title"></div>
+      <div id="question" style="height: auto; width: auto"></div>
+      <div id="result"></div>
+    </div>
 
     <script>
       // アンケート作成ページ遷移
@@ -29,30 +33,43 @@
       const resultButton = document.getElementById("resultButton");
       if (resultButton) {
         resultButton.addEventListener("click", async () => {
-          const resultContainer = document.getElementById("resultContainer");
-          resultContainer.innerHTML = "データを取得しています...";
+          const resultsContainer = document.getElementById("resultsContainer");
+          const titleContainer = document.getElementById("title");
+          const resultContainer = document.getElementById("result");
+          const questionContainer = document.getElementById("question");
+          titleContainer.innerHTML = "データを取得しています...";
 
           try {
             const response = await fetch("/results");
             if (!response.ok) {
               throw new Error("データの取得に失敗しました");
             }
-
             const results = await response.json();
-
+            console.log(results.ans);
+            console.log(results.question);
             // 結果を表示
-            resultContainer.innerHTML = "";
-            results.forEach((result) => {
-              const questionDiv = document.createElement("div");
-              questionDiv.style.border = "1px solid #ccc";
-              questionDiv.style.padding = "10px";
-              questionDiv.style.marginBottom = "10px";
+            titleContainer.innerHTML = `<h2>${results.ans[0].question_title}</h2>\n`;
+            questionContainer.innerHTML = `回答者\n`;
+            results.question[0].json.date.forEach((question) => {
+              if (question === null) {
+                questionContainer.innerHTML += `<p>回答無し</p>\n`;
+              } else {
+                questionContainer.innerHTML += `<p style = "width: 50px;">${Object.values(question)}</p>\n`;
+              }
+            });
 
-              questionDiv.innerHTML = `
-                <h2>質問ID: ${result.questionId}</h2>
-                <p>回答: ${result.answer}</p>
-              `;
-              resultContainer.appendChild(questionDiv);
+            results.ans.forEach((answers) => {
+              const ansdiv = document.createElement("div");
+              resultContainer.appendChild(ansdiv);
+              console.log(answers.name);
+              ansdiv.innerHTML = `${answers.name}`;
+              answers.answers.forEach((ans) => {
+                if (ans === null) {
+                  ansdiv.innerHTML += `<p>回答無し</p>\n`;
+                } else {
+                  ansdiv.innerHTML += `<p>${ans}</p>\n`;
+                }
+              });
             });
           } catch (error) {
             console.error("エラー:", error);

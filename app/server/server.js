@@ -32,7 +32,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fileNum = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const mongodb_1 = require("mongodb");
@@ -50,20 +49,22 @@ mongodb_1.MongoClient.connect(uri)
     console.log("MongoDBに接続しました");
 })
     .catch((error) => console.error("MongoDB接続エラー:", error));
+let fileNum = 1;
 const indexPath = path.join(__dirname, "../public/index.html");
 const createPath = path.join(__dirname, "../makeQuestion/createQuestion.html");
 const questionsDir = path.join(__dirname, "../uploads/questions");
-exports.fileNum = 1;
 if (!fs.existsSync(questionsDir))
     fs.mkdirSync(questionsDir);
 app.get('/', (req, res) => {
     fs.readFile(indexPath, (err, data) => {
         if (err) {
-            console.error("ファイル読み込みエラー:", err);
-            res.status(500).send("ファイルが見つかりません"); // `res.status`の後に`send`を呼び出してレスポンスを送信
+            res.statusCode = 500;
+            res.end("ファイルが見つかりません");
             return;
         }
-        res.status(200).type("html").send(data); // 正常なレスポンスを返す
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "text/html");
+        res.end(data);
     });
 });
 app.get('/create', (req, res) => {
@@ -105,11 +106,17 @@ app.get('/uploads/questions/*', (req, res) => {
 app.get('/results', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     console.log("結果取得開始");
     const answersCollection = db.collection("answers");
-    const result = yield answersCollection.find().toArray();
-    console.log(result);
+    const questionCollection = db.collection('questions');
+    const answerResult = yield answersCollection.find({ question_title: "飲みかい日程" }).toArray();
+    const questionResult = yield questionCollection.find({ questionId: answerResult.questionId }).toArray();
+    console.log(JSON.stringify(questionResult)[0]);
+    console.log(answerResult);
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify(result));
+    res.end(JSON.stringify({
+        ans: answerResult,
+        question: questionResult
+    }));
 }));
 app.post('/upload', (req, res) => {
     const form = new formidable_1.IncomingForm();
@@ -139,11 +146,12 @@ app.post('/upload', (req, res) => {
                 const questionId = yield registQuestion(db, "questions", jsonData);
                 console.log(questionId);
                 // HTMLファイルを保存し、連番を加算
-                const questionHtmlFile = `question${exports.fileNum}.html`;
-                exports.fileNum++;
+                const questionHtmlFile = `question${fileNum}.html`;
+                fileNum++;
                 db.collection("questions").find;
                 // アンケートHTMLのファイルのパスを作成
                 const htmlFilePath = path.join(questionsDir, questionHtmlFile);
+                console.log(htmlFilePath);
                 fs.writeFile(htmlFilePath, (0, htmlGenerator_1.createDynamicHtml)(jsonData, questionId), (err) => {
                     if (err) {
                         res.statusCode = 500;
@@ -176,7 +184,6 @@ app.post('/answer', (req, res) => {
         try {
             console.log("inTry");
             const answerData = JSON.parse(body);
-            console.log("server answerData = ", answerData);
             const answersCollection = db.collection("answers");
             // DB保存処理
             const result = yield answersCollection.insertOne(answerData);

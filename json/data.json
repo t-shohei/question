@@ -1,29 +1,14 @@
-[
-  {
-    "question_id": 1,
-    "question": "名前は？",
-    "type": "textarea",
-    "required": true
-  },
-  {
-    "question_id": 2,
-    "question": "参加日は？",
-    "required": false,
-    "type": "checkbox",
-    "questions": [
-      {
-        "questions_id": 1,
-        "value": "項目1",
-        "checked": true
-      },
-      {
-        "questions_id": 2,
-        "value": "項目2"
-      },
-      {
-        "questions_id": 3,
-        "value": "項目3"
-      }
-    ]
-  }
-]
+{
+  "title":"飲みかい日程",
+  "date":[
+    {"1" : "12/1"},
+    {"2" : "12/2"},
+    {"3" : "12/3"},
+    {"4" : "12/4"},
+    {"5" : "12/5"},
+    {"6" : "12/6"},
+    {"7" : "12/7"},
+    {"8" : "12/8"},
+    {"9" : "12/9"}
+  ]
+}

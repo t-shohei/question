@@ -19,10 +19,10 @@ MongoClient.connect(uri)
   })
   .catch((error) => console.error("MongoDB接続エラー:", error));
 
+  let fileNum = 1;
 const indexPath = path.join(__dirname, "../public/index.html");
 const createPath = path.join(__dirname, "../makeQuestion/createQuestion.html");
 const questionsDir = path.join(__dirname, "../uploads/questions");
-export let fileNum = 1;
 if (!fs.existsSync(questionsDir)) fs.mkdirSync(questionsDir);
 app.get('/',(req: http.IncomingMessage, res: any) => {
     fs.readFile(indexPath, (err, data) => {
@@ -77,11 +77,18 @@ app.get('/results',async(req:any, res:any) => {
   console.log("結果取得開始");
 
   const answersCollection = db.collection("answers");
-  const result = await answersCollection.find().toArray();
-  console.log(result);
+  const questionCollection = db.collection('questions')
+  const answerResult = await answersCollection.find({question_title: "飲みかい日程"}).toArray();
+  const questionResult = await questionCollection.find({questionId : answerResult.questionId}).toArray();
+ 
+  console.log( JSON.stringify(questionResult)[0] );
+  console.log(answerResult);
   res.statusCode = 200;
   res.setHeader("Content-Type", "application/json");
-  res.end(JSON.stringify(result));
+  res.end(JSON.stringify({
+    ans: answerResult,
+    question: questionResult
+  }));
 })
 app.post('/upload',(req:any,res:any)=>{
   const form = new IncomingForm();
@@ -119,6 +126,7 @@ app.post('/upload',(req:any,res:any)=>{
           db.collection("questions").find;
           // アンケートHTMLのファイルのパスを作成
           const htmlFilePath = path.join(questionsDir, questionHtmlFile);
+          console.log(htmlFilePath);
           fs.writeFile(
             htmlFilePath,
             createDynamicHtml(jsonData, questionId),
@@ -156,7 +164,6 @@ app.post('/answer',(req: any,res: any) => {
         try {
           console.log("inTry");
           const answerData = JSON.parse(body);
-          console.log("server answerData = ", answerData);
           const answersCollection = db.collection("answers");
           // DB保存処理
           const result = await answersCollection.insertOne(answerData);

@@ -35,14 +35,50 @@ const createDynamicHtml = (data, questionId) => {
     <head>
       <meta charset="UTF-8">
       <title>アンケート</title>
+            <style>
+        /* ラジオボタンを非表示 */
+        input[type="radio"] {
+          display: none;
+        }
+    
+        /* カスタムラベルのスタイル */
+        .custom-radio {
+          display: inline-block;
+          padding: 10px 20px;
+          border: 2px solid #ccc;
+          border-radius: 5px;
+          cursor: pointer;
+          font-size: 16px;
+          text-align: center;
+          margin: 5px;
+        }
+    
+        /* 選択時のスタイル */
+        input[type="radio"]:checked + .custom-radio {
+          background-color: #4caf50;
+          color: white;
+          border-color: #4caf50;
+        }
+      </style>
     </head>
     <body>
       <div class="questions" id="${questionId}">
+      <h1 id="question_title">${data.title}</h1>
+      </div>
   `;
-    data.forEach((question) => {
+    data.date.forEach((question) => {
         html += `
-      <div class="question" id="${question.question_id}">
-    <h2>質問: ${question.question_id}</h2>\n`;
+      <div class="question" id="${Object.keys(question)}">
+    <h2>${question[Object.keys(question).toString()]}</h2>\n
+    <input type="radio" id="${question[Object.keys(question).toString()]}_circle" name="${question[Object.keys(question).toString()]}" value="〇">
+    <label for="${question[Object.keys(question).toString()]}_circle" class="custom-radio">〇</label>
+
+    <input type="radio" id="${question[Object.keys(question).toString()]}_triangle" name="${question[Object.keys(question).toString()]}" value="△">
+    <label for="${question[Object.keys(question).toString()]}_triangle" class="custom-radio">△</label>
+
+    <input type="radio" id="${question[Object.keys(question).toString()]}_x" name="${question[Object.keys(question).toString()]}" value="×">
+    <label for="${question[Object.keys(question).toString()]}_x" class="custom-radio">×</label>
+    `;
         if (question.type === "textarea") {
             html += `<textarea id="${question.type}_${question.question_id}"></textarea>\n`;
         }
@@ -56,10 +92,11 @@ const createDynamicHtml = (data, questionId) => {
     // HTMLのフッター部分
     html += `
         <button id="submitButton">回答</button>
-        </div>`;
+        `;
     html += `<script>`;
     html += `
       const questionId = document.getElementsByClassName("questions")[0].id;
+      const questionTitle = document.getElementById("question_title");
       const questionClass = document.getElementsByClassName("question");
       const submitButton = document.getElementById("submitButton");
       const resultText = document.getElementById("result");
@@ -68,19 +105,21 @@ const createDynamicHtml = (data, questionId) => {
   `;
     html +=
         `
-// JSONデータを構築
-      const data = {questionId: questionId,};
+      // JSONデータを構築
+      const data = {
+        questionId: questionId,
+        question_title: questionTitle.textContent,
+        answers: [],
+      };
       submitButton.addEventListener("click", async () => {
-        for (
-          let index = 0, answerId = 1;
-          index < questionClass.length;
-          index++, answerId++
-        ) {
+              const name = document.getElementById("name").value;
+        data.name = name
+        for (let index = 0; index < questionClass.length; index++) {
           // テキストエリアの値をデータに追加する
           if (questionClass[index].querySelector("textarea") !== null) {\n` +
             "textarea = document.getElementById(`textarea_${index + 1}`);\n" +
             "textareaValue = textarea.value;\n" +
-            "data[`textarea_${answerId}`] = textareaValue;\n" +
+            "data.answers.push(textareaValue);\n" +
             "}" +
             "// checkboxの時にデータを追加する\n";
     html +=
@@ -92,7 +131,7 @@ const createDynamicHtml = (data, questionId) => {
             "  selectedCheckboxes = Array.from(checkboxes)\n" +
             "    .filter((checkbox) => checkbox.checked) // チェックされているものだけに絞る\n" +
             "    .map((checkbox) => checkbox.value); // 値を取得\n" +
-            "  data[`checkbox_${answerId}`] = selectedCheckboxes;\n" +
+            "  data.answers.push(selectedCheckboxes);;\n" +
             "}\n" +
             "  //radioButtonの時のデータを追加\n" +
             "  // ラジオボタンの値をデータに追加する\n";
@@ -100,11 +139,21 @@ const createDynamicHtml = (data, questionId) => {
     html +=
         `  const radios = questionClass[index].querySelectorAll('input[type="radio"]');\n` +
             "    const selectedRadio = Array.from(radios).find((radio) => radio.checked); // チェックされているラジオボタンを取得\n" +
-            "    data[`radio_${answerId}`] = selectedRadio ? selectedRadio.value : null; // チェックされていない場合は null\n" +
+            "data.answers.push(selectedRadio ? selectedRadio.value : null);\n" +
             "  }\n" +
             "}\n" +
             "console.log(data);\n" +
             "// JSONとして送信\n";
+    html += `
+      const nullValue = Object.entries(data)
+    .filter(([key, value]) => value === null)
+    .map(([key]) => key)
+  if (nullValue) {
+    nullValue.forEach((val)=>{
+      console.log(val)
+    })
+}
+    `;
     html += `try {
           console.log("client inTry");
           await fetch("/answer", {
@@ -120,6 +169,8 @@ const createDynamicHtml = (data, questionId) => {
               resultText.textContent = res.message;
             })
             .catch((err) => console.log(err));
+             // 配列を初期化
+            data.answers = []
           console.log("client endTry");
         } catch (error) {
           console.error(error);
