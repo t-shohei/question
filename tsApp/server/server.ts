@@ -8,16 +8,32 @@ const express = require('express')
 const app = express()
 const port = 8000
 
-const uri = "mongodb://localhost:27017/questions";
+const mongose = require('mongoose');
+
+const uri = 'mongodb://admin:admin123@localhost:27017/'
+
+// const uri = "mongodb://localhost:27017/questions";
 const dbName = "questions";
 let db: any;
 
-MongoClient.connect(uri)
-  .then((client) => {
-    db = client.db(dbName);
-    console.log("MongoDBに接続しました");
-  })
-  .catch((error) => console.error("MongoDB接続エラー:", error));
+// const mongoose = require('mongoose');
+
+// const uri = 'mongodb://admin:your_password@<ホストIP>:27017/mydatabase';
+mongose.connect(uri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => console.log('Connected to MongoDB!'))
+  // .catch(err: any => console.error('Connection error:', err));
+
+
+
+// MongoClient.connect(uri)
+//   .then((client) => {
+//     db = client.db(dbName);
+//     console.log("MongoDBに接続しました");
+//   })
+//   .catch((error) => console.error("MongoDB接続エラー:", error));
 
   let fileNum = 1;
 const indexPath = path.join(__dirname, "../public/index.html");
@@ -80,7 +96,7 @@ app.get('/results',async(req:any, res:any) => {
   const questionCollection = db.collection('questions')
   const answerResult = await answersCollection.find({question_title: "飲みかい日程"}).toArray();
   const questionResult = await questionCollection.find({questionId : answerResult.questionId}).toArray();
- 
+
   console.log( JSON.stringify(questionResult)[0] );
   console.log(answerResult);
   res.statusCode = 200;

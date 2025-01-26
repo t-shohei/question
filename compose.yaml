@@ -1,28 +1,20 @@
 services:
-  app:
-    container_name: app
-    build:
-      context: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      - mongo
-    environment:
-      - MONGO_URI=mongodb://mongo:27017
-    networks:
-      - app_network
 
   mongo:
     container_name: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin # MongoDBの管理者のユーザー名
+      MONGO_INITDB_ROOT_PASSWORD: admin123 # MongoDBの管理者のパスワード
     image: mongo:6.0
     ports:
       - "27017:27017"
     networks:
       - app_network
+    volumes:
+      - ./volumes/data:/data/db
 
 networks:
   app_network:
     driver: bridge
 
-volumes:
-  mongo_data:

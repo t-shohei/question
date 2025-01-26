@@ -31,151 +31,138 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const mongodb_1 = require("mongodb");
-const htmlGenerator_1 = require("../util/htmlGenerator");
 const formidable_1 = require("formidable");
-const express = require('express');
-const app = express();
+const htmlGenerator_1 = require("../util/htmlGenerator");
+const mongoose_1 = require("mongoose");
+const express_1 = __importDefault(require("express"));
+// Expressの設定
+const app = (0, express_1.default)();
 const port = 8000;
-const uri = "mongodb://localhost:27017/questions";
-const dbName = "questions";
-let db;
-mongodb_1.MongoClient.connect(uri)
-    .then((client) => {
-    db = client.db(dbName);
-    console.log("MongoDBに接続しました");
-})
-    .catch((error) => console.error("MongoDB接続エラー:", error));
+const dbName = "questionAnswer";
+const uri = `mongodb://questionAnswer:89248924@localhost:27017/${dbName}`;
+// Mongooseの接続
+(0, mongoose_1.connect)(uri)
+    .then(() => console.log('Connected to MongoDB!'))
+    .catch((err) => console.error('Connection error:', err));
+const questionSchema = new mongoose_1.Schema({
+    json: { type: Object, required: true }
+});
+const answerSchema = new mongoose_1.Schema({
+    questionId: String,
+    question_title: String,
+    answers: [Object],
+});
+const Question = (0, mongoose_1.model)('Question', questionSchema);
+const Answer = (0, mongoose_1.model)('Answer', answerSchema);
 let fileNum = 1;
 const indexPath = path.join(__dirname, "../public/index.html");
 const createPath = path.join(__dirname, "../makeQuestion/createQuestion.html");
 const questionsDir = path.join(__dirname, "../uploads/questions");
 if (!fs.existsSync(questionsDir))
     fs.mkdirSync(questionsDir);
+// 画面遷移系
 app.get('/', (req, res) => {
     fs.readFile(indexPath, (err, data) => {
         if (err) {
-            res.statusCode = 500;
-            res.end("ファイルが見つかりません");
+            res.status(500).send("ファイルが見つかりません");
             return;
         }
-        res.statusCode = 200;
-        res.setHeader("Content-Type", "text/html");
-        res.end(data);
+        res.status(200).setHeader("Content-Type", "text/html").end(data);
     });
 });
 app.get('/create', (req, res) => {
     fs.readFile(createPath, (err, data) => {
         if (err) {
-            res.statusCode = 500;
-            res.end("ファイルが見つかりません");
+            res.status(500).send("ファイルが見つかりません");
             return;
         }
-        res.statusCode = 200;
-        res.setHeader("Content-Type", "text/html");
-        res.end(data);
+        res.status(200).setHeader("Content-Type", "text/html").end(data);
     });
 });
 app.get('/uploads/questions/*', (req, res) => {
     const filePath = path.join(__dirname, "../", req.url);
     fs.access(filePath, fs.constants.F_OK, (err) => {
         if (err) {
-            // ファイルが見つからない場合
-            res.statusCode = 404;
-            res.setHeader("Content-Type", "text/plain");
-            res.end("指定されたファイルが見つかりません。");
+            res.status(404).setHeader("Content-Type", "text/plain").send("指定されたファイルが見つかりません。");
             return;
         }
-        // ファイルを読み込みレスポンスとして返す
         fs.readFile(filePath, (err, data) => {
             if (err) {
-                res.statusCode = 500;
-                res.setHeader("Content-Type", "text/plain");
-                res.end("ファイルの読み込み中にエラーが発生しました。");
+                res.status(500).setHeader("Content-Type", "text/plain").send("ファイルの読み込み中にエラーが発生しました。");
                 return;
             }
-            res.statusCode = 200;
-            res.setHeader("Content-Type", "text/html");
-            res.end(data);
+            res.status(200).setHeader("Content-Type", "text/html").end(data);
         });
     });
 });
+// 処理系
 app.get('/results', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     console.log("結果取得開始");
-    const answersCollection = db.collection("answers");
-    const questionCollection = db.collection('questions');
-    const answerResult = yield answersCollection.find({ question_title: "飲みかい日程" }).toArray();
-    const questionResult = yield questionCollection.find({ questionId: answerResult.questionId }).toArray();
-    console.log(JSON.stringify(questionResult)[0]);
-    console.log(answerResult);
-    res.statusCode = 200;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({
-        ans: answerResult,
-        question: questionResult
-    }));
+    try {
+        const answersResult = yield Answer.find({ question_title: "飲みかい日程" }).exec();
+        const questionResult = yield Question.find({ _id: (_a = answersResult[0]) === null || _a === void 0 ? void 0 : _a.questionId }).exec();
+        console.log(JSON.stringify(questionResult)[0]);
+        console.log(answersResult);
+        res.status(200).json({
+            ans: answersResult,
+            question: questionResult
+        });
+    }
+    catch (error) {
+        res.status(500).send("結果取得エラー");
+    }
 }));
 app.post('/upload', (req, res) => {
     const form = new formidable_1.IncomingForm();
-    form.parse(req, (err, fields, files) => {
+    form.parse(req, (err, fields, files) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
-            res.statusCode = 500;
-            res.end("フォーム解析エラー");
+            res.status(500).send("フォーム解析エラー");
             return;
         }
-        // ファイルを取得
-        const uploadedFile = Array.isArray(files.jsonFile)
-            ? files.jsonFile[0]
-            : files.jsonFile;
+        const uploadedFile = Array.isArray(files.jsonFile) ? files.jsonFile[0] : files.jsonFile;
         if (!uploadedFile) {
-            res.statusCode = 400;
-            res.end("JSONファイルが見つかりません");
+            res.status(400).send("JSONファイルが見つかりません");
             return;
         }
         fs.readFile(uploadedFile.filepath, "utf-8", (readErr, data) => __awaiter(void 0, void 0, void 0, function* () {
             if (readErr) {
-                res.statusCode = 500;
-                res.end("ファイル読み込みエラー");
+                res.status(500).send("ファイル読み込みエラー");
                 return;
             }
             try {
                 const jsonData = JSON.parse(data);
-                const questionId = yield registQuestion(db, "questions", jsonData);
-                console.log(questionId);
+                const question = new Question({ json: jsonData });
+                const savedQuestion = yield question.save();
                 // HTMLファイルを保存し、連番を加算
                 const questionHtmlFile = `question${fileNum}.html`;
                 fileNum++;
-                db.collection("questions").find;
-                // アンケートHTMLのファイルのパスを作成
                 const htmlFilePath = path.join(questionsDir, questionHtmlFile);
-                console.log(htmlFilePath);
-                fs.writeFile(htmlFilePath, (0, htmlGenerator_1.createDynamicHtml)(jsonData, questionId), (err) => {
+                fs.writeFile(htmlFilePath, (0, htmlGenerator_1.createDynamicHtml)(jsonData, savedQuestion._id), (err) => {
                     if (err) {
-                        res.statusCode = 500;
-                        res.end("ファイル作成エラー");
+                        res.status(500).send("ファイル作成エラー");
                         return;
                     }
                 });
-                res.statusCode = 200;
-                res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({
+                res.status(200).json({
                     message: "データを受け取りました",
                     data: jsonData,
                     url: `http://localhost:8000/uploads/questions/${questionHtmlFile}`,
-                }));
+                });
             }
             catch (parseErr) {
-                res.statusCode = 400;
-                res.end("無効なJSONデータです");
+                res.status(400).send("無効なJSONデータです");
             }
         }));
-    });
+    }));
 });
 app.post('/answer', (req, res) => {
-    // アンケート回答の送信処理
     let body = "";
     req.on("data", (chunk) => {
         body += chunk;
@@ -184,47 +171,25 @@ app.post('/answer', (req, res) => {
         try {
             console.log("inTry");
             const answerData = JSON.parse(body);
-            const answersCollection = db.collection("answers");
-            // DB保存処理
-            const result = yield answersCollection.insertOne(answerData);
-            res.statusCode = 200;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify({
+            const answer = new Answer(answerData);
+            const result = yield answer.save();
+            res.status(200).json({
                 message: "回答が保存されました",
-                id: result.insertedId,
-            }));
+                id: result._id,
+            });
             console.log("tryEnd:", result);
         }
         catch (parseErr) {
             if (parseErr) {
                 console.log(parseErr);
-                res.statusCode = 500;
-                res.end("データ保存エラー");
+                res.status(500).send("データ保存エラー");
                 return;
             }
-            res.statusCode = 400;
-            res.end("無効なデータ形式です");
+            res.status(400).send("無効なデータ形式です");
         }
     }));
 });
-const registQuestion = (db, collectionName, json) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield db.collection(collectionName).insertOne({ json });
-    return result.insertedId;
-});
 // サーバー起動
 app.listen(port, () => {
-    console.log("Server running at http://localhost:8000");
+    console.log(`Server running at http://localhost:${port}`);
 });
-// // サーバー処理
-// const server = http.createServer(
-//   (req: http.IncomingMessage, res: http.ServerResponse) => {
-//     // GETリクエスト
-//     if (req.method === "GET") {
-//       getRequest(req, res, db);
-//     }
-//     // POSTリクエスト処理
-//     else if (req.method === "POST") {
-//       postRequest(req, res, db);
-//     }
-//   }
-// );

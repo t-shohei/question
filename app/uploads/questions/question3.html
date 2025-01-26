@@ -31,8 +31,8 @@
       </style>
     </head>
     <body>
-      <div class="questions" id="678ba7f300c776616ed3927a">
-      <h1>飲みかい日程</h1>
+      <div class="questions" id="679497d4c3e0a9bef08bf0af">
+      <h1 id="question_title">飲みかい日程</h1>
       </div>
   
       <div class="question" id="1">
@@ -146,25 +146,28 @@
         <button id="submitButton">回答</button>
         <script>
       const questionId = document.getElementsByClassName("questions")[0].id;
+      const questionTitle = document.getElementById("question_title");
       const questionClass = document.getElementsByClassName("question");
       const submitButton = document.getElementById("submitButton");
       const resultText = document.getElementById("result");
       let textarea;
       let textareaValue;
   
-// JSONデータを構築
-      const data = {questionId: questionId,};
+      // JSONデータを構築
+      const data = {
+        questionId: questionId,
+        question_title: questionTitle.textContent,
+        answers: [],
+      };
       submitButton.addEventListener("click", async () => {
-        for (
-          let index = 0, answerId = 1;
-          index < questionClass.length;
-          index++, answerId++
-        ) {
+        //       const name = document.getElementById("name").value;
+        // data.name = name
+        for (let index = 0; index < questionClass.length; index++) {
           // テキストエリアの値をデータに追加する
           if (questionClass[index].querySelector("textarea") !== null) {
 textarea = document.getElementById(`textarea_${index + 1}`);
 textareaValue = textarea.value;
-data[`${answerId}`] = textareaValue;
+data.answers.push(textareaValue);
 }// checkboxの時にデータを追加する
 else if (questionClass[index].querySelector('input[type="checkbox"]') !==null) {
   checkboxes = questionClass[index].querySelectorAll(
@@ -173,14 +176,14 @@ else if (questionClass[index].querySelector('input[type="checkbox"]') !==null) {
   selectedCheckboxes = Array.from(checkboxes)
     .filter((checkbox) => checkbox.checked) // チェックされているものだけに絞る
     .map((checkbox) => checkbox.value); // 値を取得
-  data[`${answerId}`] = selectedCheckboxes;
+  data.answers.push(selectedCheckboxes);;
 }
   //radioButtonの時のデータを追加
   // ラジオボタンの値をデータに追加する
   else if (questionClass[index].querySelector('input[type="radio"]') !== null) {
   const radios = questionClass[index].querySelectorAll('input[type="radio"]');
     const selectedRadio = Array.from(radios).find((radio) => radio.checked); // チェックされているラジオボタンを取得
-    data[`${answerId}`] = selectedRadio ? selectedRadio.value : null; // チェックされていない場合は null
+data.answers.push(selectedRadio ? selectedRadio.value : null);
   }
 }
 console.log(data);
@@ -209,6 +212,8 @@ console.log(data);
               resultText.textContent = res.message;
             })
             .catch((err) => console.log(err));
+             // 配列を初期化
+            data.answers = []
           console.log("client endTry");
         } catch (error) {
           console.error(error);
